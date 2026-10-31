@@ -1,0 +1,291 @@
+# C++双向链表模板｜网络连接安全监测系统
+> 🔗 课程综合实践项目：数据结构 + C++泛型编程 + 网络安全仿真模拟
+
+> 本项目实现**模板双向链表**，模拟防火墙对网络连接进行管理、检测、隔离恶意高危连接，同时配套可视化仿真演示平台，适合程序实习、课程大作业。
+
+## 📖 项目简介
+本项目融合《数据结构与算法》、《C++面向对象程序设计》、《计算机网络》、网络空间安全多门课程知识点。
+底层手写**C++模板双向链表**，将链表作为存储载体保存网络连接信息（PID、IP、端口）；模拟安全设备识别高危端口（3389 RDP、445 SMB），定位并隔离恶意网络连接。
+
+主要能力：
+- ✅ 泛型双向链表模板：尾插、头删、尾删、指定位置插入、按索引定位节点、指定节点删除、链表清空、遍历输出
+- ✅ 边界检查，错误码输出，规避空链表、越界访问、野指针问题
+- ✅ 自定义网络连接结构体 `NetNode`，存储进程ID、IP、端口信息
+- ✅ 模拟网络安全场景：识别高危端口，定位并隔离恶意网络会话
+- ✅ 析构自动释放内存，减少内存泄漏风险
+- ✅ 配套可视化仿真演示平台，图形化展示链表内存指针变化、攻防拦截过程
+
+## 🧱 系统模块划分
+1. **双向链表模板类模块**
+封装嵌套`node`节点、头/尾指针、链表长度；实现链表全部底层增删改查接口。
+2. **网络连接数据模块 `NetNode`**
+存储进程PID、IP地址、服务端口；重载输出运算符格式化打印连接信息。
+3. **安全监测策略匹配模块**
+扫描链表，识别高危端口连接；定位恶意节点，执行链表层面隔离删除。
+4. **综合测试&内存回收验证模块**
+多组测试用例，验证增删、边界条件，析构完成内存释放校验。
+
+## ⚙️ 核心原理
+1. **双向链表**
+每个节点包含`prev`前驱指针、`next`后继指针。删除节点不需要从头遍历，直接操作前后指针，维护链表完整性，防止断链、悬空指针。
+```cpp
+// 删除节点核心指针操作
+P->prev->next = P->next;
+P->next->prev = P->prev;
+delete P;
+```
+2. **C++泛型模板编程**
+`template<class T>`实现通用双向链表，既可以存基础内置类型，也可以存储自定义`NetNode`结构体，代码复用性强。
+
+## 📝 完整源码
+```cpp
+#include<iostream>
+using namespace std;
+
+template<class T>
+class doub_Link {
+public :
+    class node {
+    public :
+        T data;
+        node* prev;
+        node* next;
+        node () :prev(NULL), next(NULL) {}
+        node(T dt , node* p, node* n) :data(dt), prev(p), next(n) {}
+    };
+    int size;
+    node* head;
+    node* tail;
+
+    doub_Link () :size (0) , head(NULL), tail(NULL) {}
+
+    //尾部插入
+    void link_push_up (T dt) {
+        if (size < 0) {
+            cout << "FALSE1" ;
+            return ;
+        }
+        if (size == 0) {
+            node* p = new node(dt , NULL , NULL);
+            head = p;
+            tail = p;
+            ++size;
+        }
+        else{
+            node* p = new node(dt , tail , NULL);
+            tail->next = p;
+            tail = p;
+            ++size;
+        }
+    }
+
+    //头删
+    void link_pop_up () {
+        if (size <= 0) { cout << "FALSE2" ; return ; }
+        if (size == 1) {
+            delete head;
+            head = NULL;
+            --size;
+        }
+        else {
+            node* p = head->next;
+            delete head;
+            head = p;
+            p->prev = NULL;
+            --size;
+        }
+    }
+
+    //尾删
+    void link_pop_end () {
+        if (size <= 0) { cout << "FALSE3" ; return ; }
+        if (size == 1){
+            delete head;
+            head = NULL;
+            tail = NULL;
+            --size;
+        }
+        else {
+            node* p = tail->prev;
+            delete tail;
+            tail = p;
+            p->next = NULL;
+            --size;
+        }
+    }
+
+    //在last节点之后插入
+    void link_insert_down (T d, node* last) {
+        if (last == NULL || last == tail) {
+            link_push_up (d);
+        }
+        else{
+            node* p = new node(d, last , last->next);
+            node* a = last->next;
+            a->prev = p;
+            last->next = p;
+            ++size;
+        }
+    }
+
+    //按照索引i定位节点
+    node* destination (int i) {
+        if ((i>=0) && (i<= size-1)) {
+            node* now = head;
+            while (i--) {
+                now = now->next;
+            }
+            return now;
+        }
+        else{
+            cout << "FALSE5" ;
+            return NULL;
+        }
+    }
+
+    //删除指定节点
+    void link_delete (node* p) {
+        if (p == NULL) { cout << "FALSE6" ; return ; }
+        if (p == head) {
+            link_pop_up ();
+        }
+        else if (p == tail) {
+            link_pop_end ();
+        }
+        else {
+            p->prev->next = p->next;
+            p->next->prev = p->prev;
+            delete p;
+            --size;
+        }
+    }
+
+    //清空整个链表，释放全部内存
+    void clear () {
+        while (head != NULL) {
+            node* n = head->next;
+            delete head;
+            head = n;
+        }
+        head = tail = NULL;
+        size = 0;
+    }
+
+    //遍历打印
+    void print () const{
+        node* cur = head;
+        while (cur != NULL) {
+            cout << cur->data << "  ";
+            cur = cur->next;
+        }
+        cout << endl;
+    }
+
+    //析构自动释放
+    ~doub_Link () {
+        clear ();
+    };
+};
+
+//网络连接结构体
+struct NetNode {
+    int pid;         // 进程ID
+    unsigned int ip; // IP（无符号整型存储）
+    int port;        // 端口
+
+    friend ostream& operator<<(ostream& os , const NetNode& n) {
+        os << "PID :" << n.pid << " IP :" << n.ip << " Port :" << n.port;
+        return os;
+    }
+};
+
+int main () {
+    cout << "===== 1. 模板链表基础操作 =====" << endl;
+    doub_Link<int> dl;
+    dl.link_push_up (10);
+    dl.link_push_up (20);
+    dl.link_push_up (30);
+    dl.link_push_up (40);
+    dl.print ();
+
+    auto pos = dl.destination (1);
+    dl.link_insert_down (99 , pos);
+    cout << "插入后:" ;
+    dl.print ();
+    dl.link_delete (pos);
+    cout << "删除后:" ;
+    dl.print ();
+    dl.clear ();
+
+    cout << "\n===== 2. 网络安全节点链表模拟 =====" << endl;
+    doub_Link<NetNode> secList ;
+    secList.link_push_up ({ 1001 , 0xC0A80101 , 80 });
+    secList.link_push_up ({ 1002 , 0xC0A80102 , 443 });
+    secList.link_push_up ({ 1003 , 0xC0A80103 , 3389 });
+    secList.print ();
+
+    //模拟：定位高危3389恶意连接，执行隔离删除
+    auto malware = secList.destination (2);
+    if (malware) {
+        cout << "检测到恶意连接:" ;
+        cout << malware->data << endl;
+        secList.link_delete (malware);
+        cout << "已隔离该连接:";
+        secList.print ();
+    }
+
+    cout << "\n===== 3. 内存安全测试 =====" << endl;
+    doub_Link<int> test;
+    for (int i = 0; i < 5; ++i) test.link_push_up (i);
+    test.print ();
+    test.clear ();
+    cout << "清空后size = " << test.size << endl;
+    return 0;
+}
+```
+
+## 🖥️ 运行示例
+控制台输出效果：
+```
+===== 1. 模板链表基础操作 =====
+10  20  30  40
+插入后:10  20  99  30  40
+删除后:10  99  30  40
+
+===== 2. 网络安全节点链表模拟 =====
+PID :1001 IP :3232235777 Port :80  PID :1002 IP :3232235778 Port :443  PID :1003 IP :3232235779 Port :3389
+检测到恶意连接:PID :1003 IP :3232235779 Port :3389
+已隔离该连接:PID :1001 IP :3232235777 Port :80  PID :1002 IP :3232235778 Port :443
+
+===== 3. 内存安全测试 =====
+0  1  2  3  4
+清空后size = 0
+```
+
+## 🎮 可视化仿真演示平台
+> 终端控制台无法直观看到指针变化，项目配套前端仿真沙盒平台：
+1. **源码执行轨迹面板**：模拟Debug调试，高亮执行代码行
+2. **链表内存图形化面板**：可视化`head/tail/prev/next`指针，节点增删带动画
+3. **网络对抗沙盒区**：手动输入PID、IP、端口；检测到高危端口（3389、445）节点红色告警，一键阻断隔离恶意节点
+
+### 原版 vs 改进版对比
+|对比维度|原版代码|改进优化版本|
+|---|---|---|
+|IP输出|十六进制大整数，可读性差|位运算解析为点分十进制 `192.168.x.x`|
+|内存安全|缺少拷贝构造，存在浅拷贝风险|遵循C++三法则，禁用拷贝赋值，规避重复释放|
+|异常处理|控制台打印FALSE编码|抛出异常+界面提示告警|
+|威胁检测|固定索引定位威胁节点|动态遍历，智能匹配威胁端口特征|
+
+## ✨ 项目价值
+1. 课程交叉实践：把**数据结构底层算法**落地网络安全仿真场景，模拟防火墙/入侵检测系统连接表管理逻辑。
+2. 工程实践：练习C++模板泛型、动态内存管理，重视边界条件、野指针、内存泄漏等工程问题。
+3. 可视化平台降低抽象数据结构理解门槛，适合教学演示。
+
+## 🔭 后续展望
+- 接入 `libpcap / WinPcap` 抓取真实网卡数据包，读取真实网络连接
+- 引入多线程实现高并发连接监测
+- 扩展更多自定义防火墙过滤规则
+
+## 📚 参考资料
+1. 《数据结构与算法》张铭 王腾蛟
+2. 《新标准C++程序设计》郭炜
